@@ -1,0 +1,429 @@
+---
+Title of code: "3. Male Elephant Character Durability - Repeatability Models"
+Author of code: "Jodie L. Berezin"
+Date last updated: "May 30th, 2024"
+
+Manuscript: "Dynamics of male African elephant character durability across time, age, and social context"
+Authors of manuscript: "Caitlin E. O'Connell-Rodwell, Jodie L. Berezin, Colleen Kinzley, Patrick T. Freeman, Monica N. Sandri, Dustin Kieschnick, Mariana Abarca, Virginia Hayssen"
+---
+
+*About this code:*
+The script below contains the repeatability models used to test for consistency in male elephant behavior across time and social context.
+
+The script begins after data wrangling. Data is currently not provided due to being part of an on-going study.
+
+Any questions about the data or code can be directed to the corresponding authors:
+CEO-R, ceoconnell[at]stanford.edu
+JLB, jlberezin[at]gmail.com
+
+*Table of Contents*
+1. Checking distributions for each behavior
+2. Removing individuals with only one rate for each behavior
+3. Modeling
+  - Model prep notes
+  - Models for each behavior
+
+
+# 1. Checking distributions for each behavior
+
+*All need log behav rates*
+```{r}
+# affiliation - 408 obvs
+affil.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "affiliation")
+
+hist(affil.mushara.behav.rates3$BehavRate) # right skew
+hist(affil.mushara.behav.rates3$LogBehavRate) # normal - use log
+
+
+# aggression - 429 obvs
+aggr.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "aggression")
+
+hist(aggr.mushara.behav.rates3$BehavRate) # right skew
+hist(aggr.mushara.behav.rates3$LogBehavRate) # normal - use log
+
+
+# dominance 314 obvs
+dom.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "dominance")
+
+hist(dom.mushara.behav.rates3$BehavRate) # right skew
+hist(dom.mushara.behav.rates3$LogBehavRate) # normal - use log
+
+
+# escalated aggression - 58 obvs
+escaggr.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "esc.aggr")
+
+hist(escaggr.mushara.behav.rates3$BehavRate) # right skew
+hist(escaggr.mushara.behav.rates3$LogBehavRate) # still not super normal but I think it's okay
+
+
+# play - 160 obvs
+play.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "play")
+
+hist(play.mushara.behav.rates3$BehavRate) # right skew
+hist(play.mushara.behav.rates3$LogBehavRate) # normal - use log
+
+
+# retreat - 116 obvs
+retreat.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "retreat")
+
+hist(retreat.mushara.behav.rates3$BehavRate) # right skew
+hist(retreat.mushara.behav.rates3$LogBehavRate) # normal - use log
+
+
+# SD anxious - 414 obvs
+sda.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "sd.anxious")
+
+hist(sda.mushara.behav.rates3$BehavRate) # right skew
+hist(sda.mushara.behav.rates3$LogBehavRate) # normal - use log
+
+
+# SD comfort - 160 obvs
+sdc.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "sd.comfort")
+
+hist(sdc.mushara.behav.rates3$BehavRate) # right skew
+hist(sdc.mushara.behav.rates3$LogBehavRate) # mostly normal - use log
+
+
+# social contentment - 364 obvs
+soc.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "social.content")
+
+hist(soc.mushara.behav.rates3$BehavRate) # right skew
+hist(soc.mushara.behav.rates3$LogBehavRate) # normal - use log
+
+
+# vigilance - 502 obvs
+vig.mushara.behav.rates3 <- mushara.behav.rates3 %>%
+  filter(BehavCat == "vigilance")
+
+hist(vig.mushara.behav.rates3$BehavRate) # right skew
+hist(vig.mushara.behav.rates3$LogBehavRate) # normal - use log
+```
+
+
+# 2. Removing individuals with only one rate for each behavior
+
+Summarized to see who is being removed, then they were removed in a second step.
+```{r}
+# affiliation - no change, still 408 obvs
+affil.rates.indiv.count <- affil.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+affil.rates.indiv.count
+
+
+# aggression - no change, still 429 obvs
+aggr.rates.indiv.count <- aggr.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+aggr.rates.indiv.count
+
+
+# dominance - removed four individuals, now 310 rates
+dom.rates.indiv.count <- dom.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+dom.rates.indiv.count # four to remove
+
+dom.remove.indiv <- c("144", "64", "146", "143")
+dom.mushara.behav.rates3.2 <- dom.mushara.behav.rates3 %>%
+  filter(!ElephantName %in% dom.remove.indiv) # only 4 removed - great!
+
+
+# escalated aggression - removed six individuals, now 52 obvs
+escag.rates.indiv.count <- escaggr.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+escag.rates.indiv.count # six to remove
+
+escaggr.remove.indiv <- c("62", "48", "101", "37", "111", "25")
+escaggr.mushara.behav.rates3.2 <- escaggr.mushara.behav.rates3 %>%
+  filter(!ElephantName %in% escaggr.remove.indiv)
+
+
+# play - removed six individuals, now 154 rates
+play.rates.indiv.count <- play.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+play.rates.indiv.count # 6 to remove
+
+play.remove.indiv <- c("144", "140", "77", "92", "143", "70")
+play.mushara.behav.rates3.2 <- play.mushara.behav.rates3 %>%
+  filter(!ElephantName %in% play.remove.indiv)
+
+
+# retreat -removed 10 individuals, now 106 obvs
+retreat.rates.indiv.count <- retreat.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+retreat.rates.indiv.count # 10 to remove
+
+retreat.remove.indiv <- c("144", "112", "65", "30", "77", "93", "69", "146", "143", "96")
+retreat.mushara.behav.rates3.2 <- retreat.mushara.behav.rates3 %>%
+  filter(!ElephantName %in% retreat.remove.indiv)
+
+
+# SD anxious - no change, still with 414 obvs
+sda.rates.indiv.count <- sda.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+sda.rates.indiv.count # none to remove
+
+
+# SD comfort - six individuals to remove, now 154 obvs
+sdc.rates.indiv.count <- sdc.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+sdc.rates.indiv.count # 6 to remove
+
+sdc.remove.indiv <- c("101", "69", "92", "6", "96", "70")
+sdc.mushara.behav.rates3.2 <- sdc.mushara.behav.rates3 %>%
+  filter(!ElephantName %in% sdc.remove.indiv)
+
+
+# social content - two individuals to remove, now 362 obvs
+soc.rates.indiv.count <- soc.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+soc.rates.indiv.count # 2 to remove
+
+soc.remove.indiv <- c("92", "83")
+soc.mushara.behav.rates3.2 <- soc.mushara.behav.rates3 %>%
+  filter(!ElephantName %in% soc.remove.indiv)
+
+
+# vigilance - no change, still 502 obvs
+vig.rates.indiv.count <- vig.mushara.behav.rates3 %>%
+  group_by(ElephantName) %>%
+  summarise(n = n()) %>%
+  mutate(keep = ifelse(n < 2, "remove", "keep"))
+vig.rates.indiv.count # none to remove
+```
+
+
+# 3. Modeling
+
+Notes:
+I used the Our Coding Club tutorial describing linear mixed models and how to specify random effects: https://ourcodingclub.github.io/tutorials/mixed-models/#types
+
+The models will have the (log) behavior rate as the response variable and three random effects to test repeatability. Here is the rationale for setting up each models random effects:
+- Individual elephants are observed in multiple years and multiple events. Since no elephant is observed ONLY within one of these samples, then elephant is a cross effect with year and event (specified separately) from the other random effects. +(1|ElephantName)
+- Our years and events are tied in with each other as well: "Our site variable is a three-level factor, with sites called a, b and c. The nesting of the site within the mountain range is implicit - our sites are meaningless without being assigned to specific mountain ranges, i.e. there is nothing linking site b of the Bavarian mountain range with site b of the Central mountain range." This is true of our events within the years - there is nothing linking event 5 of 2007 and event 5 of 2009. This is an *implicit* effect and we can make *explicit* by specifying a new variable in our data (done in previous steps, YEvent = Year:Event).
+
+
+## Affiliation
+n = 408 rates, individuals = 34
+```{r}
+affil.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = affil.mushara.behav.rates3, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(affil.rptr) 
+
+plot(affil.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(affil.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(affil.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(affil.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(affil.rptr$mod)) # normality of residuals - looks good
+hist(residuals(affil.rptr$mod)) # normal
+```
+
+## Aggression
+n = 429 rates, individuals = 34
+```{r}
+aggr.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = aggr.mushara.behav.rates3, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(aggr.rptr) 
+
+plot(aggr.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(aggr.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(aggr.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(aggr.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(aggr.rptr$mod)) # normality of residuals - looks good
+hist(residuals(aggr.rptr$mod)) # normal
+```
+
+
+## Dominance
+n = 310 rates, individuals = 30
+```{r}
+dom.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = dom.mushara.behav.rates3.2, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(dom.rptr) 
+
+plot(dom.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(dom.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(dom.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(dom.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(dom.rptr$mod)) # normality of residuals - looks good
+hist(residuals(dom.rptr$mod)) # normal
+```
+
+
+## Escalated Aggression
+n = 52 rates, individuals = 16
+```{r}
+escag.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = escaggr.mushara.behav.rates3.2, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(escag.rptr) 
+
+plot(escag.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(escag.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(escag.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(escag.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(escag.rptr$mod)) # normality of residuals - looks good
+hist(residuals(escag.rptr$mod)) # normal
+```
+
+
+## Play
+n = 154 rates, individuals = 26
+```{r}
+play.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = play.mushara.behav.rates3.2, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(play.rptr) 
+
+plot(play.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(play.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(play.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(play.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(play.rptr$mod)) # normality of residuals - looks good
+hist(residuals(play.rptr$mod)) # normal
+```
+
+
+## Retreat
+n = 106 rates, individuals = 21
+```{r}
+retreat.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = retreat.mushara.behav.rates3.2, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(retreat.rptr) 
+
+plot(retreat.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(retreat.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(retreat.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(retreat.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(retreat.rptr$mod)) # normality of residuals - looks good
+hist(residuals(retreat.rptr$mod)) # normal
+```
+
+
+## Self-directed anxious
+n = 414 rates, individuals = 34
+```{r}
+sda.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = sda.mushara.behav.rates3, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(sda.rptr) 
+
+plot(sda.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(sda.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(sda.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(sda.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(sda.rptr$mod)) # normality of residuals - looks good
+hist(residuals(sda.rptr$mod)) # normal
+```
+
+
+## Self-directed comfort
+n = 154 rates, individuals = 24
+```{r}
+sdc.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = sdc.mushara.behav.rates3.2, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(sdc.rptr) 
+
+plot(sdc.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(sdc.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(sdc.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(sdc.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(sdc.rptr$mod)) # normality of residuals - looks good
+hist(residuals(sdc.rptr$mod)) # normal
+```
+
+
+## Social contentment
+n = 362 rates, individuals = 32
+```{r}
+soc.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = soc.mushara.behav.rates3.2, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(soc.rptr)
+
+plot(soc.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(soc.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(soc.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(soc.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(soc.rptr$mod)) # normality of residuals - looks good
+hist(residuals(soc.rptr$mod)) # normal
+```
+
+
+## Vigilance
+n = 502 rates, individuals = 34
+```{r}
+vig.rptr <- rpt(LogBehavRate ~ (1|ElephantName) + (1|Year) + (1|YEvent), 
+                                     grname = c("ElephantName", "Year", "YEvent"), data = vig.mushara.behav.rates3, 
+                  datatype = "Gaussian", nboot = 1000, npermut = 0)
+
+print(vig.rptr)
+
+plot(vig.rptr, grname = "ElephantName", type = "boot", cex.main = 0.8)
+plot(vig.rptr, grname = "Year", type = "boot", cex.main = 0.8)
+plot(vig.rptr, grname = "YEvent", type = "boot", cex.main = 0.8)
+
+## checking the model
+plot(residuals(vig.rptr$mod)) # linearity and equality of variance - pretty random
+ggqqplot(residuals(vig.rptr$mod)) # normality of residuals - looks good
+hist(residuals(vig.rptr$mod)) # normal
+```
+
+

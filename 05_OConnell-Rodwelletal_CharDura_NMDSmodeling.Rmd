@@ -1,0 +1,213 @@
+---
+Title of code: "5. Male Elephant Character Durability - NMDS Modeling"
+Author of code: "Jodie L. Berezin"
+Date last updated: "May 31st, 2024"
+
+Manuscript: "Dynamics of male African elephant character durability across time, age, and social context"
+Authors of manuscript: "Caitlin E. O'Connell-Rodwell, Jodie L. Berezin, Colleen Kinzley, Patrick T. Freeman, Monica N. Sandri, Dustin Kieschnick, Mariana Abarca, Virginia Hayssen"
+---
+
+*About this code:*
+The script below contains the analysis used to to assess the similarities of the character profiles among individuals using non-metric multidimensional scaling (NMDS) clustering analysis.
+
+The script begins after most of the data wrangling, using the same data as from the repeatability and LMM modeling. Data is currently not provided due to being part of an on-going study.
+
+Any questions about the data or code can be directed to the corresponding authors:
+CEO-R, ceoconnell[at]stanford.edu
+JLB, jlberezin[at]gmail.com
+
+*Table of Contents*
+1. Data wrangling
+2. Modeling
+  - Cluster determination and modeling
+  - Checking the model fit
+3. ANOSIM analysis and Figure 3
+
+~~~~~~~~~~~~~~~~~
+
+# 1. Data wrangling
+
+Since we have to use proportions because of the uneven sampling effort, I have included the code used to transform the data to be appropriate for the NMDS modeling.
+
+
+Calculating the number of times each elephant displayed a behavior
+```{r}
+behav.count <- behavrates3 %>%
+  group_by(ElephantName, BehavCat) %>%
+  summarise(BehavCount = sum(BehavCount))
+```
+
+*Since these are proportions, the first step is to center-logratio transform the data using the clr function*
+
+Doing the center-logratio on the COUNTS not the proportions.
+
+We're doing the robust centered log-ratio because we have 0's and we don't want to remove those individuals; we also don't want to impute the data because we consider these "true zeros" (individuals did not display the behavior during their observation time).
+
+```{r}
+# pivot wider to add in the zeros
+behav.count.wide <- pivot_wider(behav.count, values_from = BehavCount, 
+                                  id_cols = ElephantName, names_from=BehavCat, values_fill = 0)
+
+# put it back to long - should be 170 rows
+behav.count2 <- pivot_longer(behav.count.wide, cols = c("affiliation", "aggression", "dominance", "sd.anxious", "sd.comfort"), names_to = "behavcat", values_to = "count")
+```
+
+Center log-ratio
+```{r}
+# now we create a function to center log ratio the counts
+gm <- function(x){
+  
+  exp(mean(log(x[x>0])))
+}
+
+## yay!
+
+# now we can use this on our data
+behav.count3 <- behav.count2 %>%
+  group_by(ElephantName) %>%
+  mutate(rclr = log(count/gm(count))) %>%
+  mutate(rclr2 = ifelse(rclr == "-Inf", NA, rclr)) %>%
+  ungroup() %>%
+  select(-c(count, rclr)) %>%
+  pivot_wider(names_from = behavcat, values_from = rclr2) %>%
+  as.data.frame()
+
+rownames(behav.count3) <- behav.count3$ElephantName
+behav.count4 <- behav.count3 %>%
+  select(-ElephantName)
+
+# put it in the distance calc
+rclr.behav <- vegdist(behav.count4, method = "euclidean", binary = F, na.rm = T)
+
+rclr.dist.behav <- rclr.behav %>%
+  as.matrix() %>%
+  as_tibble(rownames = "ElephantName") %>%
+  pivot_longer(cols = -ElephantName) %>%
+  filter(name < ElephantName)
+```
+
+
+# 2. Modeling
+
+## Cluster determination and modeling
+
+Determining the number of clusters:
+
+Checking the model fit: "A plot of stress (a measure of goodness-of-fit) vs. dimensionality can be used to assess the proper choice of dimensions. The stress values themselves can be used as an indicator. Stress values >0.2 are generally poor and potentially uninterpretable, whereas values <0.1 are good and <0.05 are excellent, leaving little danger of misinterpretation. Stress values between 0.1 and 0.2 are usable but some of the distances will be misleading. Finding the inflection point can instruct the selection of a minimum number of dimensions." https://ourcodingclub.github.io/tutorials/ordination/
+Clarke, 1993 set these values - Clarke, K. R. (1993). Non-parametric multivariate analysis of changes in community structure. Austral J Ecol 18: 117-143. doi:10.1111/j.1442-9993.1993.tb00438.x
+
+```{r}
+NMDS.scree <- function(rclr.behav) { #where x is the name of the data frame variable
+  plot(rep(1, 10), replicate(10, metaMDS(rclr.behav, autotransform = F, k = 1)$stress), xlim = c(1, 10),ylim = c(0, 0.30), xlab = "# of Dimensions", ylab = "Stress", main = "NMDS stress plot")
+  for (i in 1:10) {
+    points(rep(i + 1,10),replicate(10, metaMDS(rclr.behav, autotransform = F, k = i + 1)$stress))
+  }
+}
+
+NMDS.scree(rclr.behav)
+```
+*It seems like there is an inflection around 3 dimensions, going to try modeling for 2, 3, and four dimensions*
+
+
+Running the Models
+```{r}
+# two dimensions
+set.seed(2)
+rclr.NMDS <- metaMDS(rclr.behav, k = 2, trymax = 100, engine = c("monoMDS"), autotransform = F, previous.best = T)
+
+rclr.NMDS
+rclr.NMDS$points
+plot(rclr.NMDS, type = "text") # stress is 0.17 - not great
+
+# 3 dimensions
+set.seed(3)
+rclr.NMDS.test <- metaMDS(rclr.behav, k = 3, trymax = 100, engine = c("monoMDS"), autotransform = F, previous.best = T)
+
+rclr.NMDS.test
+rclr.NMDS.test$points
+plot(rclr.NMDS.test, type = "text") # stress is 0.08 - good!
+
+# 4 dimensions
+set.seed(4)
+rclr.NMDS.test2 <- metaMDS(rclr.behav, k = 4, trymax = 100, engine = c("monoMDS"), autotransform = F, previous.best = T)
+
+rclr.NMDS.test2 # stress is 0.06 - good, but not much better than 3 - better to use 3 if the stress isn't much different
+plot(rclr.NMDS.test2, type = "text")
+```
+
+
+
+## Checking the model fit
+
+Stressplots
+```{r}
+stressplot(rclr.NMDS)
+stressplot(rclr.NMDS.test) # seems like the best - 3 dimensions
+stressplot(rclr.NMDS.test2)
+```
+
+Trying the goodness of fit
+Larger circles represent individuals that don't have as strong of a fit as the original dissimiliarity matrix - https://archetypalecology.wordpress.com/2018/02/18/non-metric-multidimensional-scaling-nmds-what-how/
+
+
+Goodness of fit function
+```{r}
+# two dimensions
+gof <- goodness(rclr.NMDS)
+plot(rclr.NMDS, type="t", main = "goodness of fit")
+points(rclr.NMDS, display="sites", cex=gof*100)
+
+# three dimensions - looks good!
+gof2 <- goodness(rclr.NMDS.test)
+plot(rclr.NMDS.test, type="t", main = "goodness of fit")
+points(rclr.NMDS.test, display="sites", cex=gof2*100)
+
+# four dimensions
+gof3 <- goodness(rclr.NMDS.test2)
+plot(rclr.NMDS.test2, type="t", main = "goodness of fit")
+points(rclr.NMDS.test2, display="sites", cex=gof3*100)
+```
+*Going to go with 3 because it's the best fit that isn't too difficult to interpret!*
+
+
+
+# 3. ANOSIM analysis and Figure 3
+
+We used an Analysis of Similarities (ANOSIM) model to statistically test for differences in character types among the five age classes. The resultant NMDS cluster plot was then overlaid with the five elephant age classes to visually assess the relationship between age and relative position of individual character profiles. 
+
+
+ANOSIM analysis
+```{r}
+# for all five age classes
+eles.AC.ano <- with(ageclass, anosim(rclr.behav, AgeClass))
+summary(eles.AC.ano)
+
+plot(eles.AC.ano)
+```
+
+
+Plotting
+```{r}
+rclrNMDS.meta.3D %>%
+  ggplot(aes(x = MDS1, y = MDS2, color = AgeClass, fill = AgeClass)) +
+  ggforce::geom_mark_ellipse(show.legend = F, aes(fill = AgeClass), size = 0.7, alpha = 0.1) +
+  geom_point(size = 3, aes(color = AgeClass)) +
+  scale_x_continuous(limits = c(-2.5,2.5), breaks = c(-2,-1,0,1,2)) +
+  scale_y_continuous(limits = c(-2.5,3), breaks = c(-2,-1,0,1,2,3)) +
+  theme_bw(base_size = 14) +
+  ylab("NMDS2") +
+  xlab("NMDS1") +
+  scale_color_manual(breaks = c("1Q", "2Q", "3Q", "Full", "Elder"), 
+                     values = c("#A7BD2B", "#28B191", "#3294D8",  "#B71458", "#7B16B9")) +
+  scale_fill_manual(breaks = c("1Q", "2Q", "3Q", "Full", "Elder"),
+                    values = c("#A7BD2B", "#28B191", "#3294D8","#B71458", "#7B16B9" )) +
+  geom_richtext(x = -1.5, y = 2.8, text.color = "black", fill = NA, label.color = NA,
+                label = "ANOSIM, *R* = 0.176, *p* = 0.008",
+                show.legend = F)
+```
+
+
+
+
+
+

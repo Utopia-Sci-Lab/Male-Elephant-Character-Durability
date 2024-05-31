@@ -1,0 +1,437 @@
+---
+Title of code: "4. Male Elephant Character Durability - Linear Mixed-effect Models"
+Author of code: "Jodie L. Berezin"
+Date last updated: "May 31st, 2024"
+
+Manuscript: "Dynamics of male African elephant character durability across time, age, and social context"
+Authors of manuscript: "Caitlin E. O'Connell-Rodwell, Jodie L. Berezin, Colleen Kinzley, Patrick T. Freeman, Monica N. Sandri, Dustin Kieschnick, Mariana Abarca, Virginia Hayssen"
+---
+
+*About this code:*
+The script below contains the linear mixed-effect models used to assess the impact that the presence of 1) musth males, 2) keystone male, and 3) youth males have on adult male (age classes 3Q, full, elder) behavior. The eight behaviors that were significantly repeatable-by-event were modeled (affiliation, aggression, dominance, play, retreat, self-directed anxious, social contentment, and vigilance).
+
+The script begins after data wrangling. Data is currently not provided due to being part of an on-going study.
+
+Any questions about the data or code can be directed to the corresponding authors:
+CEO-R, ceoconnell[at]stanford.edu
+JLB, jlberezin[at]gmail.com
+
+*Table of Contents*
+1. Checking distributions for each behavior
+2. Modeling
+3. Making Figure 2
+
+~~~~~~~~~~~~~~~~~
+
+# 1. Checking distributions for each behavior
+
+Start by selecting the behavior categories, calculating the number of elephants and the number of behavior rates and then checking distributions (the natural log was calculated in a previous step in anticipation of skew).
+
+## Affiliation
+```{r}
+affil.behav.rates <- bulls.behav.rates6 %>%
+  filter(BehavCat == "affiliation") %>% # 265 rates
+  droplevels()
+
+unique(affil.behav.rates$ElephantName) # 23 individuals
+
+hist(affil.behav.rates$BehavRate) # right skew
+hist(affil.behav.rates$LogBehavRate) # normal!
+```
+
+
+## Aggression
+```{r}
+aggres.behav.rates <- bulls.behav.rates6 %>%
+  filter(BehavCat == "aggression") %>% # 318 rates
+  droplevels()
+
+unique(aggres.behav.rates$ElephantName) # 23 individuals
+
+hist(aggres.behav.rates$BehavRate) # right skew
+hist(aggres.behav.rates$LogBehavRate) # normal!
+```
+
+
+## Dominance
+```{r}
+dom.behav.rates <- bulls.behav.rates6 %>%
+  filter(BehavCat == "dominance") %>% # 216 rates
+  droplevels()
+
+unique(dom.behav.rates$ElephantName) # 23 individuals
+
+hist(dom.behav.rates$BehavRate) # right skew
+hist(dom.behav.rates$LogBehavRate) # normal!
+```
+
+
+## Play
+```{r}
+play.behav.rates <- bulls.behav.rates6 %>%
+  filter(BehavCat == "play") %>% # 87 rates
+  droplevels()
+
+unique(play.behav.rates$ElephantName) # 20 individuals
+
+hist(play.behav.rates$BehavRate) # right skew
+hist(play.behav.rates$LogBehavRate, breaks = 5) # mostly normal - check residuals when modeling
+```
+
+
+## Retreat
+```{r}
+retreat.behav.rates <- bulls.behav.rates6 %>%
+  filter(BehavCat == "retreat") %>% # 75 rates
+  droplevels()
+
+unique(retreat.behav.rates$ElephantName) # 21 individuals
+
+hist(retreat.behav.rates$BehavRate) # right skew
+hist(retreat.behav.rates$LogBehavRate) # normal!
+```
+
+
+## Self-directed anxious
+```{r}
+sda.behav.rates <- bulls.behav.rates6 %>%
+  filter(BehavCat == "sd.anxious") %>% # 293 rates
+  droplevels()
+
+unique(sda.behav.rates$ElephantName) # 23 individuals
+
+hist(sda.behav.rates$BehavRate) # right skew
+hist(sda.behav.rates$LogBehavRate) # normal!
+```
+
+
+## Social contentment
+```{r}
+soc.behav.rates <- bulls.behav.rates6 %>%
+  filter(BehavCat == "social.content") %>% # 261 rates
+  droplevels()
+
+unique(soc.behav.rates$ElephantName) # 23 individuals
+
+hist(soc.behav.rates$BehavRate) # right skew
+hist(soc.behav.rates$LogBehavRate) # normal!
+```
+
+
+## Vigilance
+```{r}
+vig.behav.rates <- bulls.behav.rates6%>%
+  filter(BehavCat == "vigilance") %>% # 383 rates
+  droplevels()
+
+unique(vig.behav.rates$ElephantName) # 23 individuals
+
+hist(vig.behav.rates$BehavRate) # right skew
+hist(vig.behav.rates$LogBehavRate) # normal!
+```
+
+
+# 2. Modeling
+
+We have to keep in mind the structure of the data - we have individuals that appear in many years, events, and intervals - nested within each other and partially crossed (see Methods section and Repeatability Models script for more details).
+
+## Affiliation
+```{r}
+affil.lmer <- lmerTest::lmer(LogBehavRate ~ SocialContext + (1|Year/EventInterval) + (1|ElephantName), data = affil.behav.rates)
+
+summary(affil.lmer)
+
+# residuals
+plot(affil.lmer)
+qqnorm(resid(affil.lmer))
+qqline(resid(affil.lmer))
+
+# residuals
+residuals.affil.lmer <- simulateResiduals(fittedModel = affil.lmer)
+plot(residuals.affil.lmer) # looks good!!!
+
+testDispersion(residuals.affil.lmer) # is good
+testOutliers(residuals.affil.lmer, type = "bootstrap") # one possible outlier but n.s.
+testZeroInflation(residuals.affil.lmer) # looks good!
+
+affil.lmer.emm <- ggpredict(affil.lmer, terms = c("SocialContext")) # to be used for creating Figure 2
+```
+
+
+
+## Aggression
+```{r}
+aggres.lmer <- lmerTest::lmer(LogBehavRate ~ SocialContext + (1|Year/EventInterval) + (1|ElephantName), data = aggres.behav.rates)
+
+summary(aggres.lmer)
+
+# residuals
+plot(aggres.lmer)
+qqnorm(resid(aggres.lmer))
+qqline(resid(aggres.lmer))
+
+# residuals
+residuals.aggres.lmer <- simulateResiduals(fittedModel = aggres.lmer)
+plot(residuals.aggres.lmer) # looks good!!!
+
+testDispersion(residuals.aggres.lmer) # is good
+testOutliers(residuals.aggres.lmer, type = "bootstrap") # one significant outlier but the plot residuals says its fine - going to keep in the outlier
+testZeroInflation(residuals.aggres.lmer) # looks good!
+
+aggres.lmer.emm <- ggpredict(aggres.lmer, terms = c("SocialContext")) # to be used for creating Figure 2
+```
+
+
+
+## Dominance
+```{r}
+dom.lmer <- lmerTest::lmer(LogBehavRate ~ SocialContext + (1|Year/EventInterval) + (1|ElephantName), data = dom.behav.rates)
+
+summary(dom.lmer)
+
+# residuals
+plot(dom.lmer)
+qqnorm(resid(dom.lmer))
+qqline(resid(dom.lmer))
+
+# residuals
+residuals.dom.lmer <- simulateResiduals(fittedModel = dom.lmer)
+plot(residuals.dom.lmer) # looks good!!!
+
+testDispersion(residuals.dom.lmer) # is good
+testOutliers(residuals.dom.lmer, type = "bootstrap") # looks good
+testZeroInflation(residuals.dom.lmer) # looks good!
+
+dom.lmer.emm <- ggpredict(dom.lmer, terms = c("SocialContext")) # to be used for creating Figure 2
+```
+
+
+
+## Play
+```{r}
+play.lmer <- lmerTest::lmer(LogBehavRate ~ SocialContext + (1|Year/EventInterval) + (1|ElephantName), data = play.behav.rates)
+
+summary(play.lmer)
+
+# residuals
+plot(play.lmer)
+qqnorm(resid(play.lmer))
+qqline(resid(play.lmer))
+
+# residuals
+residuals.play.lmer <- simulateResiduals(fittedModel = play.lmer)
+plot(residuals.play.lmer) # looks good!!!
+
+testDispersion(residuals.play.lmer) # is good
+testOutliers(residuals.play.lmer, type = "bootstrap") # looks good
+testZeroInflation(residuals.play.lmer) # looks good!
+
+play.lmer.emm <- ggpredict(play.lmer, terms = c("SocialContext")) # to be used for creating Figure 2
+```
+
+
+
+## Retreat
+```{r}
+retreat.lmer <- lmerTest::lmer(LogBehavRate ~ SocialContext + (1|Year/EventInterval) + (1|ElephantName), data = retreat.behav.rates)
+
+summary(retreat.lmer)
+
+# residuals
+plot(retreat.lmer)
+qqnorm(resid(retreat.lmer))
+qqline(resid(retreat.lmer))
+
+# residuals
+residuals.retreat.lmer <- simulateResiduals(fittedModel = retreat.lmer)
+plot(residuals.retreat.lmer) # looks good!!!
+
+testDispersion(residuals.retreat.lmer) # is good
+testOutliers(residuals.retreat.lmer, type = "bootstrap") # looks good
+testZeroInflation(residuals.retreat.lmer) # looks good!
+
+retreat.lmer.emm <- ggpredict(retreat.lmer, terms = c("SocialContext")) # to be used for creating Figure 2
+```
+
+
+
+## Self-directed anxious
+```{r}
+sda.lmer <- lmerTest::lmer(LogBehavRate ~ SocialContext + (1|Year/EventInterval) + (1|ElephantName), data = sda.behav.rates)
+
+summary(sda.lmer)
+
+# residuals
+plot(sda.lmer)
+qqnorm(resid(sda.lmer))
+qqline(resid(sda.lmer))
+
+# residuals
+residuals.sda.lmer <- simulateResiduals(fittedModel = sda.lmer)
+plot(residuals.sda.lmer) # looks good!!!
+
+testDispersion(residuals.sda.lmer) # is good
+testOutliers(residuals.sda.lmer, type = "bootstrap") # looks good
+testZeroInflation(residuals.sda.lmer) # looks good!
+
+sda.lmer.emm <- ggpredict(sda.lmer, terms = c("SocialContext")) # to be used for creating Figure 2
+```
+
+
+
+## Social contentment
+```{r}
+soc.lmer <- lmerTest::lmer(LogBehavRate ~ SocialContext + (1|Year/EventInterval) + (1|ElephantName), data = soc.behav.rates)
+
+summary(soc.lmer)
+
+# residuals
+plot(soc.lmer)
+qqnorm(resid(soc.lmer))
+qqline(resid(soc.lmer))
+
+# residuals
+residuals.soc.lmer <- simulateResiduals(fittedModel = soc.lmer)
+plot(residuals.soc.lmer) # looks good!!!
+
+testDispersion(residuals.soc.lmer) # is good
+testOutliers(residuals.soc.lmer, type = "bootstrap") # looks good
+testZeroInflation(residuals.soc.lmer) # looks good!
+
+soc.lmer.emm <- ggpredict(soc.lmer, terms = c("SocialContext")) # to be used for creating Figure 2
+```
+
+
+
+## Vigilance
+```{r}
+vig.lmer <- lmerTest::lmer(LogBehavRate ~ SocialContext + (1|Year/EventInterval) + (1|ElephantName), data = vig.behav.rates)
+
+summary(vig.lmer)
+
+# residuals
+plot(vig.lmer)
+qqnorm(resid(vig.lmer))
+qqline(resid(vig.lmer))
+
+# residuals
+residuals.vig.lmer <- simulateResiduals(fittedModel = vig.lmer)
+plot(residuals.vig.lmer) # looks good!!!
+
+testDispersion(residuals.vig.lmer) # is good
+testOutliers(residuals.vig.lmer, type = "bootstrap") # looks good
+testZeroInflation(residuals.vig.lmer) # looks good!
+
+vig.lmer.emm <- ggpredict(vig.lmer, terms = c("SocialContext")) # to be used for creating Figure 2
+```
+
+
+
+
+# 3. Making Figure 2
+
+## First have to adjust the ggpredict tables so they can all be merged
+```{r}
+# affiliation
+affil.lmer.emm2 <- affil.lmer.emm %>%
+  as.data.frame() %>%
+  rename("SocialContext" = "x") %>%
+  select(-group) %>%
+  mutate(behavior = "affiliation")
+
+# aggression
+aggres.lmer.emm2 <- aggres.lmer.emm %>%
+  as.data.frame() %>%
+  rename("SocialContext" = "x") %>%
+  select(-group) %>%
+  mutate(behavior = "aggression")
+
+# dominance
+dom.lmer.emm2 <- dom.lmer.emm %>%
+  as.data.frame() %>%
+  rename("SocialContext" = "x") %>%
+  select(-group) %>%
+  mutate(behavior = "dominance")
+
+# play
+play.lmer.emm2 <- play.lmer.emm %>%
+  as.data.frame() %>%
+  rename("SocialContext" = "x") %>%
+  select(-group) %>%
+  mutate(behavior = "play")
+
+# retreat
+retreat.lmer.emm2 <- retreat.lmer.emm %>%
+  as.data.frame() %>%
+  rename("SocialContext" = "x") %>%
+  select(-group) %>%
+  mutate(behavior = "retreat")
+
+# sda
+sda.lmer.emm2 <- sda.lmer.emm %>%
+  as.data.frame() %>%
+  rename("SocialContext" = "x") %>%
+  select(-group) %>%
+  mutate(behavior = "sd.anxious")
+
+# soc
+soc.lmer.emm2 <- soc.lmer.emm %>%
+  as.data.frame() %>%
+  rename("SocialContext" = "x") %>%
+  select(-group) %>%
+  mutate(behavior = "social.content")
+
+# vigilance
+vig.lmer.emm2 <- vig.lmer.emm %>%
+  as.data.frame() %>%
+  rename("SocialContext" = "x") %>%
+  select(-group) %>%
+  mutate(behavior = "vigilance")
+
+```
+
+
+## Merge the tables
+```{r}
+lmer.emm <- full_join(affil.lmer.emm2, aggres.lmer.emm2) %>%
+  full_join(., dom.lmer.emm2) %>%
+  full_join(., play.lmer.emm2) %>%
+  full_join(., retreat.lmer.emm2) %>%
+  full_join(., sda.lmer.emm2) %>%
+  full_join(., soc.lmer.emm2) %>%
+  full_join(., vig.lmer.emm2)
+
+# re-order the behaviors
+lmer.emm2 <- lmer.emm[,c(6,1,2,3,4,5)]
+
+lmer.emm2$behavior <- as.factor(as.character(lmer.emm2$behavior))
+```
+
+
+## Making the figure
+```{r}
+level_orded <- c("affiliation", "aggression", "dominance", "play", "retreat", "sd.anxious", "social.content", "vigilance")
+
+behav.labs <- as_labeller(c("affiliation" = "Affiliation", "aggression" = "Aggression", "dominance" = "Dominance", "play" = "Play", "retreat" = "Retreat", "sd.anxious" = "Self-directed anxious", "social.content" = "Social contentment", "vigilance" = "Vigilance"))
+
+# for adding in the significance stars - taken from Table A3 (output of models)
+an.text <- data.frame(behavior = c("affiliation", "affiliation", "aggression", "dominance", "retreat", "sd.anxious", "social.content", "vigilance", "vigilance"), SocialContext = c("dom", "youth", "dom&youth", "youth", "musth&youth", "dom&youth","dom&youth", "dom&youth", "youth"), predicted = c(-4.2, -3, -3.85, -3.7, -3.8, -4.2, -4, -3.15, -2.85), label = c("*", "*", "*", "*", "*", "*", "*", "*", "*"))
+
+ggplot(lmer.emm, aes(x = SocialContext, y = predicted, color = SocialContext)) +
+  geom_count(show.legend = F) +
+  facet_wrap(facets = "behavior", labeller = behav.labs, ncol = 4) +
+  geom_pointrange(aes(x =SocialContext, y = predicted, ymin = conf.low, ymax = conf.high), linewidth = 1, size = 0.8) + 
+  theme_bw(base_size = 19) +
+  theme(legend.position = "none", 
+        strip.background = element_rect(colour="black", fill="white", 
+                                       size=1.5, linetype="solid")) +
+  ylab(expression(Estimated~Mean~(Log[10])))+
+  xlab(expression(Social~Context)) +
+  scale_color_manual(labels = c("Adults", "Keystone", "Keystone & Youth", "Musth", "Musth & Youth", "Youth"), 
+                    values = c("#9C755F", "#E15759", "#EDC948", "#59A14F", "#4E79A7", "#B07AA1")) +
+  scale_x_discrete(labels = c("Adults", "Keystone", "Keystone & Youth", "Musth", "Musth & Youth", "Youth"), guide = guide_axis(angle = 45)) +
+  geom_text(data = an.text, label = an.text$label, colour = "black", size = 10)
+
+```
+
+
