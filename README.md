@@ -2,7 +2,9 @@
 Code repository for Male Elephant Character Durability submitted manuscript
 
 This R code was used to run all statistical analyses reported in the manuscript, "Dynamics of male African elephant character durability across time, age, and social context." 
+
 This manuscript was published as a **pre-print** on BioRxiv on May 26th, 2024: https://doi.org/10.1101/2024.05.24.595367
+
 The manuscript will be submitted to MDPI _Animals_ special issue: "Conservation Behavior Approaches to Elephant Management and Welfare" on June 7th, 2024.
 
 Summary of R code files in this repository:
