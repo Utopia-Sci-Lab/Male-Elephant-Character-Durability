@@ -1,5 +1,5 @@
 # Male-Elephant-Character-Durability
-Code and Data repository for Male Elephant Character Durability submitted manuscript
+Code and Data repository for Male Elephant Character Durability manuscript
 
 This R code was used to run all statistical analyses reported in the manuscript, "Dynamics of male African elephant character durability across time, age, and social context: the importance of a keystone individual and young males" 
 
