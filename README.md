@@ -1,9 +1,11 @@
 # Male-Elephant-Character-Durability
-Code and Data repository for Male Elephant Character Durability manuscript
+Code and Data repository for Male Elephant Character Durability publication
 
-This R code was used to run all statistical analyses reported in the manuscript, "Dynamics of male African elephant character durability across time, age, and social context: the importance of a keystone individual and young males" 
+This R code was used to run all statistical analyses reported in the publication, "Consistency and flexibility of character in free-ranging male African elephants across time, age, and social contexts" 
 
 This manuscript was published as a **pre-print** on BioRxiv on May 26th, 2024: https://doi.org/10.1101/2024.05.24.595367
+
+This manuscript was published on December 4th, 2024 in PLOS ONE: https://doi.org/10.1371/journal.pone.0311780
 
 Data file (reduced): OConnell-Rodwelletal_CharacterDurability_ReducedData
 
